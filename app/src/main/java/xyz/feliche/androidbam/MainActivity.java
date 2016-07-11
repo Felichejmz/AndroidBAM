@@ -302,7 +302,8 @@ public class MainActivity extends AppCompatActivity {
             etHistory.append("\nIntentando enviar SMS");
         }catch(Exception e){
             e.printStackTrace();
-            Toast.makeText(getApplicationContext(), "Fallo el SMS (permiso?)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Fallo (Se otorgo permiso de enviar SMS's?)",
+                    Toast.LENGTH_SHORT).show();
         }
     }
     private boolean testCellMsg(String number, String message){
