@@ -20,6 +20,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import servicio.XmppConnection;
@@ -29,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private EditText etHistory;
     private EditText etMsg;
     private Button btnConnect;
+    private TextView tvVersion;
+    private TextView tvAccountServerSMS;
     //private int SIZE_CODE = 6;
     //private int interval = 10000;
     //private Handler handler;
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
         etMsg = (EditText)findViewById(R.id.etMsg);
         etHistory = (EditText)findViewById(R.id.etHistory);
         btnConnect = (Button)findViewById(R.id.btnConnect);
+        tvVersion = (TextView)findViewById(R.id.tvVersion);
+        tvAccountServerSMS = (TextView)findViewById(R.id.tvAccountServerSMS);
 
         accountXmpp = Const.SERVER_SMS_ACCOUNT;
         passXmpp = Const.SERVER_SMS_PASS;
@@ -65,12 +70,17 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
+        tvVersion.setText(Const.VERSION);
+        tvAccountServerSMS.setText(Const.SERVER_SMS_ACCOUNT + "@" + Const.SERVER_NAME);
+
         //handler = new Handler();
         //startRepeatingTask();
 
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                // reinicio el editText
+                if(etHistory.getLineCount() >= Const.MAXLINES) etHistory.setText("");
                 switch (getResultCode())
                 {
                     case Activity.RESULT_OK:
@@ -100,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                // reinicio el editText
+                if(etHistory.getLineCount() >= Const.MAXLINES) etHistory.setText("");
                 switch (getResultCode()){
                     case Activity.RESULT_OK:
                         Toast.makeText(getBaseContext(),"SMS entregado", Toast.LENGTH_SHORT).show();
@@ -115,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
 
         sentPI = PendingIntent.getBroadcast(this,0,new Intent(SENT),0);
         deliveredPI = PendingIntent.getBroadcast(this,0,new Intent(DELIVERED),0);
+        // reinicio el editText
+        if(etHistory.getLineCount() >= Const.MAXLINES) etHistory.setText("");
 
         if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)){
             etHistory.setText("Desconectado");
@@ -147,6 +161,8 @@ public class MainActivity extends AppCompatActivity {
         wBReceiver = new WakefulBroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                // reinicio el editText
+                if(etHistory.getLineCount() >= Const.MAXLINES) etHistory.setText("");
                 String action = intent.getAction();
                 Log.d(MAINTAG, "action = " + action);
                 Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);

@@ -16,6 +16,57 @@
         android:layout_gravity="center">
 
         <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Version:"
+                android:id="@+id/textView2" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="version"
+                android:id="@+id/tvVersion" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cuenta:"
+                android:id="@+id/textView7" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New Text"
+                android:id="@+id/tvAccountServerSMS" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Uso:"
+                android:id="@+id/textView5" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="numeroCelular@6 digitos"
+                android:id="@+id/textView6" />
+        </TableRow>
+
+        <TableRow
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center_horizontal">
@@ -23,7 +74,7 @@
             <TextView
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:text="Conectar a servicio Xmpp:"
+                android:text="Xmpp:"
                 android:id="@+id/textView4"
                 android:textSize="15dp"
                 android:layout_gravity="center_vertical" />
@@ -36,6 +87,7 @@
                 android:id="@+id/btnConnect"
                 android:onClick="btnOnConnect" />
         </TableRow>
+
     </TableLayout>
 
     <TableLayout
@@ -52,7 +104,7 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Mensaje"
+                android:text="Mensaje SMS a enviar:"
                 android:id="@+id/textView3"
                 android:layout_weight="1" />
         </TableRow>
@@ -80,7 +132,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Mensajes"
+        android:text="Estado:"
         android:id="@+id/textView"
         android:textSize="15dp" />
 
