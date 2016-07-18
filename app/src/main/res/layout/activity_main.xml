@@ -62,8 +62,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="numeroCelular@6 digitos"
-                android:id="@+id/textView6" />
+                android:id="@+id/tvInstrucciones"
+                android:text="new text" />
         </TableRow>
 
         <TableRow
@@ -121,12 +121,6 @@
                 android:text="Tu codigo FoodNow es" />
         </TableRow>
 
-        <TableRow
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent">
-
-        </TableRow>
-
     </TableLayout>
 
     <TextView
@@ -134,11 +128,11 @@
         android:layout_height="wrap_content"
         android:text="Estado:"
         android:id="@+id/textView"
-        android:textSize="15dp" />
+        android:textSize="15sp" />
 
     <TableLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
 
         <ScrollView
             android:layout_width="fill_parent"
@@ -148,11 +142,12 @@
 
             <EditText
                 android:layout_width="fill_parent"
-                android:layout_height="fill_parent"
-                android:textSize="10dp"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
                 android:id="@+id/etHistory"
-                android:editable="false"
-                android:enabled="false" />
+                android:enabled="false"
+                android:inputType="textMultiLine"
+                android:background="@color/button_material_light" />
         </ScrollView>
     </TableLayout>
 

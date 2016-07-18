@@ -19,24 +19,33 @@ import org.jivesoftware.smack.chat.ChatManager;
 import org.jivesoftware.smack.chat.ChatManagerListener;
 import org.jivesoftware.smack.chat.ChatMessageListener;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.roster.Roster;
+import org.jivesoftware.smack.roster.RosterEntry;
+import org.jivesoftware.smack.roster.RosterListener;
 import org.jivesoftware.smack.sasl.SASLMechanism;
 import org.jivesoftware.smack.sasl.provided.SASLDigestMD5Mechanism;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.jivesoftware.smackx.ping.PingFailedListener;
 import org.jivesoftware.smackx.ping.PingManager;
+import org.jivesoftware.smackx.ping.android.ServerPingWithAlarmManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.logging.Handler;
+
+import servicio.XmppService;
 
 import xyz.feliche.androidbam.Const;
 
 /**
  * Created by feliche on 21/06/16.
  */
-public class XmppConnection implements ConnectionListener, ChatManagerListener, PingFailedListener, ChatMessageListener {
+public class XmppConnection implements ConnectionListener, ChatManagerListener, PingFailedListener, ChatMessageListener, RosterListener {
 
     private final Context mApplicationContext;
-
     private XMPPTCPConnection mConnection;
     private BroadcastReceiver mReceiver;
 
@@ -74,17 +83,18 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
 
     public static enum ConnectionState{
         AUTHENTICATE,
-        ERROR,
         AUTH_ERROR,
         IO_ERROR,
         HOSTNAME_ERROR,
-        SECURITY_ERROR,
         CONNECTED,
         CLOSED_ERROR,
         RECONNECTING,
         RECONNECTED,
         RECONNECTED_ERROR,
-        DISCONNECTED;
+        DISCONNECTED,
+        START_SERVICE,
+        PING_ERROR,
+        STOP_SERVICE;
     }
 
     //ConnectionListener
@@ -128,7 +138,13 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
 
     @Override
     public void pingFailed() {
+        Log.i("XMPPConnection: ", "Fallo el ping");
+        XmppService.sConnectionState = ConnectionState.PING_ERROR;
+        connectionStatus(XmppService.sConnectionState);
 
+        Intent intent = new Intent(mApplicationContext, XmppService.class);
+        mApplicationContext.stopService(intent);
+        mApplicationContext.startService(intent);
     }
 
     public XmppConnection(Context mContext){
@@ -147,49 +163,6 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         }
     }
 
-    // Conectar
-    public void connect() throws IOException, XMPPException, SmackException {
-        XMPPTCPConnectionConfiguration.Builder builder
-                = XMPPTCPConnectionConfiguration.builder();
-
-        builder.setSecurityMode(ConnectionConfiguration.SecurityMode.required);
-        SASLMechanism mechanism = new SASLDigestMD5Mechanism();
-        SASLAuthentication.registerSASLMechanism(mechanism);
-        SASLAuthentication.blacklistSASLMechanism("SCRAM-SHA-1");
-        SASLAuthentication.blacklistSASLMechanism("DIGEST-MD5");
-
-        // configuración de la conexión XMPP
-        builder.setHost(Const.SERVER_NAME);
-        builder.setServiceName(Const.SERVER_NAME);
-        builder.setResource(Const.APP_NAME);
-        builder.setSendPresence(true);
-        builder.setPort(5222);
-
-        // crea la conexión
-        mConnection = new XMPPTCPConnection(builder.build());
-        // set reconnection policy
-        ReconnectionManager connMgr = ReconnectionManager.getInstanceFor(mConnection);
-        connMgr.enableAutomaticReconnection();
-        // set reconnection default policy
-        ReconnectionManager.setEnabledPerDefault(true);
-        ReconnectionManager.setDefaultReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.FIXED_DELAY);
-        // Configura el listener
-        mConnection.addConnectionListener(this);
-        // se conecta al servidor
-        mConnection.connect();
-        // envía la autenticación
-        mConnection.login(Const.SERVER_SMS_ACCOUNT, Const.SERVER_SMS_PASS);
-
-        // Envía un Ping cada 2 minutos
-        PingManager.setDefaultPingInterval(120);
-        PingManager pingManager = PingManager.getInstanceFor(mConnection);
-        pingManager.registerPingFailedListener(this);
-
-        setUpSendMessageReceiver();
-
-        ChatManager.getInstanceFor(mConnection).addChatListener(this);
-    }
-
 
     public void onConnectionError(ConnectionState error){
         connectionStatus(error);
@@ -199,11 +172,11 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if(action.equals(XmppService.SEND_MESSAGE)){
-                sendMessage(intent.getStringExtra(XmppService.BUNDLE_MESSAGE_BODY),
-                        intent.getStringExtra(XmppService.BUNDLE_TO));
-            }
+                String action = intent.getAction();
+                if(action.equals(XmppService.SEND_MESSAGE)){
+                    sendMessage(intent.getStringExtra(XmppService.BUNDLE_MESSAGE_BODY),
+                            intent.getStringExtra(XmppService.BUNDLE_TO));
+                }
             }
         };
         IntentFilter filter = new IntentFilter();
@@ -220,5 +193,120 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         } catch (SmackException.NotConnectedException e) {
             e.printStackTrace();
         }
+    }
+
+    // Conectar
+    public void connect() throws IOException, XMPPException, SmackException {
+        XMPPTCPConnectionConfiguration.Builder builder
+                = XMPPTCPConnectionConfiguration.builder();
+
+        builder.setSecurityMode(ConnectionConfiguration.SecurityMode.required);
+        SASLMechanism mechanism = new SASLDigestMD5Mechanism();
+        SASLAuthentication.registerSASLMechanism(mechanism);
+        SASLAuthentication.blacklistSASLMechanism("SCRAM-SHA-1");
+        SASLAuthentication.blacklistSASLMechanism("DIGEST-MD5");
+
+        // configuración de la conexión XMPP
+        // builder.setDebuggerEnabled(true);
+        builder.setHost(Const.SERVER_NAME);
+        builder.setServiceName(Const.SERVER_NAME);
+        builder.setResource(Const.APP_NAME);
+        builder.setSendPresence(true);
+        builder.setPort(5222);
+
+        // crea la conexión
+        mConnection = new XMPPTCPConnection(builder.build());
+
+        // set reconnection policy
+        // set reconnection default policy
+        ReconnectionManager connMgr = ReconnectionManager.getInstanceFor(mConnection);
+        connMgr.enableAutomaticReconnection();
+        connMgr.setEnabledPerDefault(true);
+        connMgr.setDefaultReconnectionPolicy(ReconnectionManager.
+                ReconnectionPolicy.RANDOM_INCREASING_DELAY);
+
+        // Configura el listener
+        mConnection.addConnectionListener(this);
+        // se conecta al servidor
+        mConnection.connect();
+
+        // Envía un Ping cada 60 segundos
+        PingManager pingManager = PingManager.getInstanceFor(mConnection);
+        pingManager.setDefaultPingInterval(600);
+        pingManager.registerPingFailedListener(this);
+
+        //ServerPingWithAlarmManager sPWAM = ServerPingWithAlarmManager.getInstanceFor(mConnection);
+        ServerPingWithAlarmManager.getInstanceFor(mConnection);
+        ServerPingWithAlarmManager.onCreate(mApplicationContext);
+
+        setUpSendMessageReceiver();
+
+        Presence presence = new Presence(Presence.Type.available);
+        presence.setStatus("Trabajando");
+        mConnection.sendStanza(presence);
+
+        ChatManager.getInstanceFor(mConnection).addChatListener(this);
+
+        Roster roster = Roster.getInstanceFor(mConnection);
+        roster.setRosterLoadedAtLogin(true);
+        roster.setSubscriptionMode(Roster.SubscriptionMode.accept_all);
+        roster.addRosterListener(this);
+
+        // envía la autenticación
+        mConnection.login(Const.SERVER_SMS_ACCOUNT, Const.SERVER_SMS_PASS);
+    }
+
+    private void rebuildRoster(){
+        ArrayList<String> listRoster = new ArrayList<String>();
+        Roster roster = Roster.getInstanceFor(mConnection);
+
+        if(!roster.isLoaded()) {
+            try {
+                roster.reloadAndWait();
+            } catch (SmackException.NotLoggedInException e) {
+                e.printStackTrace();
+            } catch (SmackException.NotConnectedException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        Collection<RosterEntry> entries = roster.getEntries();
+        String status;
+        Presence presence;
+        for(RosterEntry entry: entries){
+            presence = roster.getPresence(entry.getUser());
+            if(presence.isAvailable()){
+                status = "OnLine";
+            }else{
+                status = "OffLine";
+            }
+            listRoster.add(entry.getUser() + ": " + status);
+        }
+        Intent intent = new Intent(XmppService.BUNDLE_ROSTER);
+        intent.setPackage(mApplicationContext.getPackageName());
+        intent.putExtra(XmppService.LIST_ROSTER, listRoster);
+        mApplicationContext.sendBroadcast(intent);
+    }
+
+    @Override
+    public void entriesAdded(Collection<String> addresses) {
+        Log.d(LOGTAG, "Se agrego un usuario");
+        rebuildRoster();
+    }
+    @Override
+    public void entriesUpdated(Collection<String> addresses) {
+        Log.d(LOGTAG, "Se actualizo la lista");
+        rebuildRoster();
+    }
+    @Override
+    public void entriesDeleted(Collection<String> addresses) {
+        Log.d(LOGTAG, "Se elimino un usuario");
+        rebuildRoster();
+    }
+    @Override
+    public void presenceChanged(Presence presence) {
+        rebuildRoster();
+        Log.d(LOGTAG, "cambio el estado de un usuario");
     }
 }

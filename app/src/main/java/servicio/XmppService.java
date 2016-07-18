@@ -7,8 +7,10 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import org.jivesoftware.smack.ReconnectionManager;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smackx.ping.android.ServerPingWithAlarmManager;
 
 import java.io.IOException;
 
@@ -17,6 +19,9 @@ public class XmppService extends Service {
     public static final String NEW_MESSAGE = "xyz.feliche.newmessage";
     public static final String SEND_MESSAGE = "xyz.feliche.sendmessage";
     public static final String UPDATE_CONNECTION = "xyz.feliche.statusconnection";
+    public static final String LIST_ROSTER = "xyz.feliche.listroster";
+    public static final String PRESENCE_ROSTER = "xyz.feliche.presenceroster";
+    public static final String BUNDLE_ROSTER = "xyz.feliche.bundleroster";
     public static final String CHANGE_CONNECTIVITY = "android.net.conn.CONNECTIVITY_CHANGE";
 
     public static final String BUNDLE_FROM_XMPP = "b_from";
@@ -69,6 +74,7 @@ public class XmppService extends Service {
         mTHandler.post(new Runnable() {
             @Override
             public void run() {
+                mConnection.onConnectionError(XmppConnection.ConnectionState.STOP_SERVICE);
                 if(mConnection != null){
                     mConnection.disconnect();
                 }
@@ -77,9 +83,9 @@ public class XmppService extends Service {
     }
 
     private void initConnection(){
-        String error;
         if(mConnection == null){
             mConnection = new XmppConnection(this);
+            mConnection.onConnectionError(XmppConnection.ConnectionState.START_SERVICE);
         }
         try {
             mConnection.connect();
@@ -89,7 +95,7 @@ public class XmppService extends Service {
             mConnection.onConnectionError(XmppConnection.ConnectionState.IO_ERROR);
         } catch (XMPPException e) {
             e.printStackTrace();
-            final int auth_error = Log.e(LOGTAG, "AUTH_ERROR");
+            Log.e(LOGTAG, "AUTH_ERROR");
             mConnection.onConnectionError(XmppConnection.ConnectionState.AUTH_ERROR);
         } catch (SmackException e) {
             e.printStackTrace();
