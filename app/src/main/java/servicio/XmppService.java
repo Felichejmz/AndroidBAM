@@ -47,8 +47,9 @@ public class XmppService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
+        super.onStartCommand(intent,flags,startId);
         start();
-        return Service.START_STICKY;
+        return Service.START_STICKY_COMPATIBILITY;
     }
 
     private void start() {

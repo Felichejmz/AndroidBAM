@@ -34,11 +34,9 @@ import org.jivesoftware.smackx.ping.android.ServerPingWithAlarmManager;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.logging.Handler;
-
-import servicio.XmppService;
 
 import xyz.feliche.androidbam.Const;
+import xyz.feliche.androidbam.MainActivity;
 
 /**
  * Created by feliche on 21/06/16.
@@ -223,7 +221,7 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         connMgr.enableAutomaticReconnection();
         connMgr.setEnabledPerDefault(true);
         connMgr.setDefaultReconnectionPolicy(ReconnectionManager.
-                ReconnectionPolicy.RANDOM_INCREASING_DELAY);
+                ReconnectionPolicy.FIXED_DELAY);
 
         // Configura el listener
         mConnection.addConnectionListener(this);
@@ -235,7 +233,6 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         pingManager.setDefaultPingInterval(600);
         pingManager.registerPingFailedListener(this);
 
-        //ServerPingWithAlarmManager sPWAM = ServerPingWithAlarmManager.getInstanceFor(mConnection);
         ServerPingWithAlarmManager.getInstanceFor(mConnection);
         ServerPingWithAlarmManager.onCreate(mApplicationContext);
 

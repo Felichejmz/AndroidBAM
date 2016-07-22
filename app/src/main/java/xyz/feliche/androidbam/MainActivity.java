@@ -8,9 +8,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.Handler;
 import android.os.StrictMode;
 import android.os.Vibrator;
 import android.support.v4.content.WakefulBroadcastReceiver;
@@ -25,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
 import servicio.XmppConnection;
 import servicio.XmppService;
@@ -45,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String MAINTAG = "ON PRINCIPAL:";
     private static final String ON_RESUME = "ON RESUME:";
 
-    boolean userConnection = false;
+    public static boolean userConnection = false;
 
     // intents de SMS
     String SENT = "SMS_SENT";
@@ -168,7 +166,8 @@ public class MainActivity extends AppCompatActivity {
                 // reinicio el editText
                 clearHistory();
                 String action = intent.getAction();
-                etHistory.append("\n" + action);
+                etHistory.append("\n" + action + Calendar.getInstance().get(Calendar.HOUR) +
+                                ":" + Calendar.getInstance().get(Calendar.MINUTE));
                 switch (action) {
                     case XmppService.BUNDLE_ROSTER:
                         ArrayList<String> lista;
@@ -181,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.e(ON_RESUME, "Nuevo mensaje Xmpp:");
                         etHistory.append("\n" + "Nuevo mensaje Xmpp:" + message);
                         Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-                        vibrator.vibrate(500);
+                        vibrator.vibrate(1000);
                         if (testXmppMsg(message) == false) break;
                         String numero = message.split(Const.SEPARADOR)[0];
                         String codigo = message.split(Const.SEPARADOR)[1];
@@ -207,27 +206,25 @@ public class MainActivity extends AppCompatActivity {
                         } else if (status.equals("DISCONNECTED")) {
                             drawBtnRed("Desconectado");
                         } else if (status.equals("CLOSED_ERROR")) {
+                            reconnect();
                             drawBtnRed("Error");
-                        } else if(status.equals("HOSTNAME_ERROR") ||
-                                status.equals("IO_ERROR") ||
-                                status.equals("AUTH_ERROR")) {
-                            drawBtnRed("Error Init");
-                            // No se conecto Exception, repite
-                            if(userConnection == true){
-                                disconnectXmpp();
-                                new Handler().postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        connectXmpp();
-                                    }
-                                },1000);
-                            }
+                        } else if(status.equals("HOSTNAME_ERROR")){
+                            reconnect();
+                            drawBtnRed("Error HOSTNAME");
+                        } else if(status.equals("AUTH_ERROR")) {
+                            reconnect();
+                            drawBtnRed("Error AUTH");
+                        } else if(status.equals("IO_ERROR")){
+                            reconnect();
+                            drawBtnRed("Error IO");
                         }
                         break;
+
                     // Cambio de la conexión a Internet
                     case XmppService.CHANGE_CONNECTIVITY:
                         Log.e(ON_RESUME, "XMPP change connectivity: ");
                         etHistory.append("\n XMPP change connectivity : " + " userConection : " + userConnection);
+                        reconnect();
 //                        if(userConnection == true){
 //                            if(haveInternet() == true) {
 //                                connectXmpp();
@@ -241,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
 //                            connectXmpp();
 //                        else
 //                            disconnectXmpp();
-//                        break;
+//                        break
                     default:
                         break;
                 }
@@ -263,33 +260,43 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void connectXmpp(){
-        Log.i("ConnectXmpp",XmppService.getState().toString());
-        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)||
-                XmppService.getState().equals(XmppConnection.ConnectionState.CLOSED_ERROR)){
-            if(haveInternet() == true) {
-                Intent intent = new Intent(this, XmppService.class);
-                this.startService(intent);
-                etHistory.append("\n connectXMPP: Conectando....");
-            }else{
-                etHistory.append("\n connectXMPP: Sin conexion a Internet");
-            }
+    private void reconnect(){
+        if(MainActivity.userConnection == true) {
+            Intent intent = new Intent(this, XmppService.class);
+            this.stopService(intent);
+            this.startService(intent);
         }
     }
 
-    private void disconnectXmpp(){
-        String status = XmppService.getState().toString();
-        Log.i("disconnectXmpp",status);
+    private void connectXmpp(){
+        Intent intent = new Intent(this, XmppService.class);
+        this.startService(intent);
+        etHistory.append("\n connectXMPP: Conectando....");
+//        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)||
+//                XmppService.getState().equals(XmppConnection.ConnectionState.CLOSED_ERROR)){
+//            if(haveInternet() == true) {
+//                Intent intent = new Intent(this, XmppService.class);
+//                this.startService(intent);
+//                etHistory.append("\n connectXMPP: Conectando....");
+//            }else{
+//                etHistory.append("\n connectXMPP: Sin conexion a Internet");
+//            }
+//        }
+    }
 
-        if(status.equals(XmppConnection.ConnectionState.CONNECTED.toString()) ||
-                status.equals(XmppConnection.ConnectionState.AUTHENTICATE.toString())||
-                status.equals(XmppConnection.ConnectionState.RECONNECTED.toString())){
-            Intent intent = new Intent(this, XmppService.class);
-            this.stopService(intent);
-            etHistory.append("\n disconnectXMPP: desconectando....");
-        }else{
-            etHistory.append("\n disconnectXMPP: No existen conexiones para desconectar");
-        }
+    private void disconnectXmpp(){
+        Intent intent = new Intent(this, XmppService.class);
+        this.stopService(intent);
+        etHistory.append("\n disconnectXMPP: desconectando....");
+//        if(status.equals(XmppConnection.ConnectionState.CONNECTED.toString()) ||
+//                status.equals(XmppConnection.ConnectionState.AUTHENTICATE.toString())||
+//                status.equals(XmppConnection.ConnectionState.RECONNECTED.toString())){
+//            Intent intent = new Intent(this, XmppService.class);
+//            this.stopService(intent);
+//            etHistory.append("\n disconnectXMPP: desconectando....");
+//        }else{
+//            etHistory.append("\n disconnectXMPP: No existen conexiones para desconectar");
+//        }
     }
 
     public void btnOnConnect(View v){
@@ -322,7 +329,6 @@ public class MainActivity extends AppCompatActivity {
         btnConnect.setText(msg);
         btnConnect.setTextColor(Color.argb(255,0,255,0));
     }
-
 //    private void sendSMSIntent(String number, String Code){
 //        Log.i(SEND_SMS, "Enviar SMS");
 //        Intent smsIntent = new Intent(Intent.ACTION_VIEW);
@@ -368,15 +374,15 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private boolean haveInternet(){
-        ConnectivityManager cm =
-                (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        if(activeNetwork == null)
-            return false;
-        else
-            return true;
-    }
+//    private boolean haveInternet(){
+//        ConnectivityManager cm =
+//                (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
+//        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+//        if(activeNetwork == null)
+//            return false;
+//        else
+//            return true;
+//    }
 
     private void clearHistory(){
         if(etHistory.getLineCount() >= Const.MAXLINES){

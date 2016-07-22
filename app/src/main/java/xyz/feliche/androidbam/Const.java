@@ -5,12 +5,16 @@ package xyz.feliche.androidbam;
  */
 public class Const {
     // Servidor XMPP
-    public static String SERVER_NAME = "htmorelia.com";
+    //public static String SERVER_NAME = "htmorelia.com";
+    public static String SERVER_NAME = "foodnowmexico.com.mx";
 
     // cuenta del servidor XMPP
-    public static String SERVER_SMS_ACCOUNT = "server_sms";
+    //public static String SERVER_SMS_ACCOUNT = "server_sms";
+    public static String SERVER_SMS_ACCOUNT = "server_sms2";
+
+
+    public static String SERVER_SMS_PASS = "server_sms2";
     //public static String SERVER_SMS_PASS = "\\.{CF7VS,a";
-    public static String SERVER_SMS_PASS = "server_sms";
 
     // longitud de un numero celular y código
     public static int SIZE_CELL_NUMBER = 10;
@@ -29,5 +33,5 @@ public class Const {
     public static String MENSAJE = "Tu codigo FoodNow es";
 
     // version
-    public static String VERSION = "0.68 \"17/julio/2016\"";
+    public static String VERSION = "0.71 \"21/julio/2016\"";
 }
