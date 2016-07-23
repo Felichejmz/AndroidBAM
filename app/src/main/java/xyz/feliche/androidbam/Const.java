@@ -33,5 +33,5 @@ public class Const {
     public static String MENSAJE = "Tu codigo FoodNow es";
 
     // version
-    public static String VERSION = "0.71 \"21/julio/2016\"";
+    public static String VERSION = "0.73 \"23/julio/2016\"";
 }

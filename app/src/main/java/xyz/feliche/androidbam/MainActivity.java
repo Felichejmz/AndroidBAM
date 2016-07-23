@@ -75,6 +75,19 @@ public class MainActivity extends AppCompatActivity {
         tvCuenta.setText(Const.SERVER_SMS_ACCOUNT + "@" + Const.SERVER_NAME);
         tvUso.setText("NúmeroCelular" + Const.SEPARADOR + "Código 6 digitos");
 
+        // reinicio el editText
+        clearHistory();
+        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)){
+            etHistory.setText("Desconectado");
+            drawBtnRed("Desconectado");
+            if(userConnection == true) reconnect();
+        }else if(XmppService.getState().equals(XmppConnection.ConnectionState.CONNECTED)){
+            etHistory.setText("Conectado");
+            drawBtnGreen("Conectado");
+        }
+
+        etHistory.setText("Iniciando.........");
+
         //handler = new Handler();
         //startRepeatingTask();
         registerReceiver(new BroadcastReceiver() {
@@ -128,17 +141,6 @@ public class MainActivity extends AppCompatActivity {
 
         sentPI = PendingIntent.getBroadcast(this,0,new Intent(SENT),0);
         deliveredPI = PendingIntent.getBroadcast(this,0,new Intent(DELIVERED),0);
-
-        // reinicio el editText
-        clearHistory();
-        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)){
-            etHistory.setText("Desconectado");
-            drawBtnRed("Desconectado");
-        }else if(XmppService.getState().equals(XmppConnection.ConnectionState.CONNECTED)){
-            etHistory.setText("Conectado");
-            drawBtnGreen("Conectado");
-        }
-        etHistory.setText("Iniciando.........");
     }
 
     // almacena el estado de la aplicación
@@ -204,18 +206,19 @@ public class MainActivity extends AppCompatActivity {
                         } else if(status.equals("CONNECTED")){
                             drawBtnGreen("Conectado");
                         } else if (status.equals("DISCONNECTED")) {
+                            reconnect();
                             drawBtnRed("Desconectado");
                         } else if (status.equals("CLOSED_ERROR")) {
-                            reconnect();
+                            //reconnect();
                             drawBtnRed("Error");
                         } else if(status.equals("HOSTNAME_ERROR")){
-                            reconnect();
+                            //reconnect();
                             drawBtnRed("Error HOSTNAME");
                         } else if(status.equals("AUTH_ERROR")) {
-                            reconnect();
+                            //reconnect();
                             drawBtnRed("Error AUTH");
                         } else if(status.equals("IO_ERROR")){
-                            reconnect();
+                            //reconnect();
                             drawBtnRed("Error IO");
                         }
                         break;
@@ -224,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
                     case XmppService.CHANGE_CONNECTIVITY:
                         Log.e(ON_RESUME, "XMPP change connectivity: ");
                         etHistory.append("\n XMPP change connectivity : " + " userConection : " + userConnection);
-                        reconnect();
+                        //reconnect();
 //                        if(userConnection == true){
 //                            if(haveInternet() == true) {
 //                                connectXmpp();

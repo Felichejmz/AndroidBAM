@@ -230,7 +230,7 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
 
         // Envía un Ping cada 60 segundos
         PingManager pingManager = PingManager.getInstanceFor(mConnection);
-        pingManager.setDefaultPingInterval(600);
+        pingManager.setDefaultPingInterval(300);
         pingManager.registerPingFailedListener(this);
 
         ServerPingWithAlarmManager.getInstanceFor(mConnection);
