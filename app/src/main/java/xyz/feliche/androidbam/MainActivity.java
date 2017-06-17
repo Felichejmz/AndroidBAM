@@ -7,9 +7,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.PowerManager;
 import android.os.StrictMode;
 import android.os.Vibrator;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -25,14 +29,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 
 import servicio.XmppConnection;
-import servicio.XmppService;
+import servicio.XmppServiceBam;
 
 public class MainActivity extends AppCompatActivity {
     private EditText etHistory;
-    private EditText etMsg;
+    private EditText etSMSAccount;
     private Button btnConnect;
     private TextView tvVersion;
-    private TextView tvCuenta;
     private TextView tvUso;
 
     WakefulBroadcastReceiver wBReceiver;
@@ -42,46 +45,72 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String MAINTAG = "ON PRINCIPAL:";
     private static final String ON_RESUME = "ON RESUME:";
+    private static final int REQUEST_SMS_PERMISSION = 200;
+
+    private boolean permissionSendSMSAccepted = false;
+    private String[] permissions = {android.Manifest.permission.SEND_SMS};
 
     public static boolean userConnection = false;
 
-    // intents de SMS
+    private Mensaje mensaje;
+
+    // intent SMS
     String SENT = "SMS_SENT";
     String DELIVERED = "SMS_DELIVERED";
     PendingIntent sentPI;
     PendingIntent deliveredPI;
+    protected PowerManager.WakeLock wakeLock;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode){
+            case REQUEST_SMS_PERMISSION:
+                permissionSendSMSAccepted  = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                break;
+        }
+        if (!permissionSendSMSAccepted )
+            finish();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        final PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+        this.wakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,"Pantalla on");
+        wakeLock.acquire();
 
-        // mensaje adicional al usuario
-        etMsg = (EditText)findViewById(R.id.etMsg);
+        ActivityCompat.requestPermissions(this, permissions, REQUEST_SMS_PERMISSION);
+
         etHistory = (EditText)findViewById(R.id.etHistory);
+        etSMSAccount = (EditText)findViewById(R.id.etSMSAccount);
+
         btnConnect = (Button)findViewById(R.id.btnConnect);
         tvVersion = (TextView)findViewById(R.id.tvVersion);
-        tvCuenta = (TextView)findViewById(R.id.tvAccountServerSMS);
         tvUso = (TextView)findViewById(R.id.tvInstrucciones);
 
         accountXmpp = Const.SERVER_SMS_ACCOUNT;
         passXmpp = Const.SERVER_SMS_PASS;
 
+        mensaje = new Mensaje();
+
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
         tvVersion.setText(Const.VERSION);
-        tvCuenta.setText(Const.SERVER_SMS_ACCOUNT + "@" + Const.SERVER_NAME);
-        tvUso.setText("NúmeroCelular" + Const.SEPARADOR + "Código 6 digitos");
+        etSMSAccount.setText(Const.SERVER_SMS_ACCOUNT );
+        tvUso.setText("NúmeroCelular " + Const.SEPARADOR_NEW_USER  +
+                " o " + Const.SEPARADOR_PEDIDO + " Texto máximo 140 caracteres");
 
         // reinicio el editText
         clearHistory();
-        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)){
+        if(XmppServiceBam.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)){
             etHistory.setText("Desconectado");
             drawBtnRed("Desconectado");
             if(userConnection == true) reconnect();
-        }else if(XmppService.getState().equals(XmppConnection.ConnectionState.CONNECTED)){
+        }else if(XmppServiceBam.getState().equals(XmppConnection.ConnectionState.CONNECTED)){
             etHistory.setText("Conectado");
             drawBtnGreen("Conectado");
         }
@@ -143,6 +172,12 @@ public class MainActivity extends AppCompatActivity {
         deliveredPI = PendingIntent.getBroadcast(this,0,new Intent(DELIVERED),0);
     }
 
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        this.wakeLock.release();
+    }
+
     // almacena el estado de la aplicación
     @Override
     protected void onSaveInstanceState(Bundle saveStatus){
@@ -171,33 +206,30 @@ public class MainActivity extends AppCompatActivity {
                 etHistory.append("\n" + action + Calendar.getInstance().get(Calendar.HOUR) +
                                 ":" + Calendar.getInstance().get(Calendar.MINUTE));
                 switch (action) {
-                    case XmppService.BUNDLE_ROSTER:
+                    case XmppServiceBam.BUNDLE_ROSTER:
                         ArrayList<String> lista;
-                        lista = intent.getStringArrayListExtra(XmppService.LIST_ROSTER);
+                        lista = intent.getStringArrayListExtra(XmppServiceBam.LIST_ROSTER);
                         for(String s : lista)
                             etHistory.append("\n " + s);
                         break;
-                    case XmppService.NEW_MESSAGE:
-                        String message = intent.getStringExtra(XmppService.BUNDLE_MESSAGE_BODY);
+                    case XmppServiceBam.NEW_MESSAGE:
+                        String message = intent.getStringExtra(XmppServiceBam.BUNDLE_MESSAGE_BODY);
                         Log.e(ON_RESUME, "Nuevo mensaje Xmpp:");
                         etHistory.append("\n" + "Nuevo mensaje Xmpp:" + message);
                         Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                         vibrator.vibrate(1000);
-                        if (testXmppMsg(message) == false) break;
-                        String numero = message.split(Const.SEPARADOR)[0];
-                        String codigo = message.split(Const.SEPARADOR)[1];
-                        if (testCellMsg(numero, codigo) == false) break;
-                        //Agrega solo si no esta en la lista el numero
-                        // y no se puede quitar el limite de SMS's
-                        //if(!cola.containsKey(numero)) {
-                        //    cola.put(numero, codigo);
-                        //    vibrator.vibrate(500);
-                        //}
-                        sendSMS(numero, codigo);
+
+                        // Nuevo objeto mensaje
+                        mensaje.set(message);
+                        if(mensaje.isValido() == false){
+                            vibrator.vibrate(500);
+                            break;
+                        }
+                        sendSMS(mensaje);
                         break;
                     // Estado de la conexión XMPP
-                    case XmppService.UPDATE_CONNECTION:
-                        String status = intent.getStringExtra(XmppService.CONNECTION);
+                    case XmppServiceBam.UPDATE_CONNECTION:
+                        String status = intent.getStringExtra(XmppServiceBam.CONNECTION);
                         Log.e(ON_RESUME, "XMPP update connection: " + status);
                         etHistory.append("\n" + "XMPP update connection: " + status);
                         if (status.equals("AUTHENTICATE") || status.equals("RECONNECTED")) {
@@ -212,19 +244,19 @@ public class MainActivity extends AppCompatActivity {
                             //reconnect();
                             drawBtnRed("Error");
                         } else if(status.equals("HOSTNAME_ERROR")){
-                            //reconnect();
+                            reconnect();
                             drawBtnRed("Error HOSTNAME");
                         } else if(status.equals("AUTH_ERROR")) {
-                            //reconnect();
+                            reconnect();
                             drawBtnRed("Error AUTH");
                         } else if(status.equals("IO_ERROR")){
-                            //reconnect();
+                            reconnect();
                             drawBtnRed("Error IO");
                         }
                         break;
 
                     // Cambio de la conexión a Internet
-                    case XmppService.CHANGE_CONNECTIVITY:
+                    case XmppServiceBam.CHANGE_CONNECTIVITY:
                         Log.e(ON_RESUME, "XMPP change connectivity: ");
                         etHistory.append("\n XMPP change connectivity : " + " userConection : " + userConnection);
                         //reconnect();
@@ -248,10 +280,10 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        IntentFilter filter = new IntentFilter(XmppService.UPDATE_CONNECTION);
-        filter.addAction(XmppService.NEW_MESSAGE);
-        filter.addAction(XmppService.BUNDLE_ROSTER);
-        filter.addAction(XmppService.CHANGE_CONNECTIVITY);
+        IntentFilter filter = new IntentFilter(XmppServiceBam.UPDATE_CONNECTION);
+        filter.addAction(XmppServiceBam.NEW_MESSAGE);
+        filter.addAction(XmppServiceBam.BUNDLE_ROSTER);
+        filter.addAction(XmppServiceBam.CHANGE_CONNECTIVITY);
 
         if(registeredBR == false){
             try {
@@ -265,20 +297,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void reconnect(){
         if(MainActivity.userConnection == true) {
-            Intent intent = new Intent(this, XmppService.class);
+            Intent intent = new Intent(this, XmppServiceBam.class);
             this.stopService(intent);
             this.startService(intent);
         }
     }
 
     private void connectXmpp(){
-        Intent intent = new Intent(this, XmppService.class);
+        Intent intent = new Intent(this, XmppServiceBam.class);
         this.startService(intent);
         etHistory.append("\n connectXMPP: Conectando....");
-//        if(XmppService.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)||
-//                XmppService.getState().equals(XmppConnection.ConnectionState.CLOSED_ERROR)){
+//        if(XmppServiceBam.getState().equals(XmppConnection.ConnectionState.DISCONNECTED)||
+//                XmppServiceBam.getState().equals(XmppConnection.ConnectionState.CLOSED_ERROR)){
 //            if(haveInternet() == true) {
-//                Intent intent = new Intent(this, XmppService.class);
+//                Intent intent = new Intent(this, XmppServiceBam.class);
 //                this.startService(intent);
 //                etHistory.append("\n connectXMPP: Conectando....");
 //            }else{
@@ -288,13 +320,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void disconnectXmpp(){
-        Intent intent = new Intent(this, XmppService.class);
+        Intent intent = new Intent(this, XmppServiceBam.class);
         this.stopService(intent);
         etHistory.append("\n disconnectXMPP: desconectando....");
 //        if(status.equals(XmppConnection.ConnectionState.CONNECTED.toString()) ||
 //                status.equals(XmppConnection.ConnectionState.AUTHENTICATE.toString())||
 //                status.equals(XmppConnection.ConnectionState.RECONNECTED.toString())){
-//            Intent intent = new Intent(this, XmppService.class);
+//            Intent intent = new Intent(this, XmppServiceBam.class);
 //            this.stopService(intent);
 //            etHistory.append("\n disconnectXMPP: desconectando....");
 //        }else{
@@ -306,8 +338,12 @@ public class MainActivity extends AppCompatActivity {
         if(userConnection == false){
             drawBtnGreen("Conectando");
             userConnection = true;
+            Const.SERVER_SMS_ACCOUNT = etSMSAccount.getText().toString();
+            etSMSAccount.setEnabled(false);
             connectXmpp();
         }else {
+            if(!etSMSAccount.isEnabled())
+                etSMSAccount.setEnabled(true);
             drawBtnRed("Desconectado");
             userConnection = false;
             disconnectXmpp();
@@ -332,27 +368,24 @@ public class MainActivity extends AppCompatActivity {
         btnConnect.setText(msg);
         btnConnect.setTextColor(Color.argb(255,0,255,0));
     }
-//    private void sendSMSIntent(String number, String Code){
-//        Log.i(SEND_SMS, "Enviar SMS");
-//        Intent smsIntent = new Intent(Intent.ACTION_VIEW);
-//
-//        smsIntent.setData(Uri.parse("smsto:"));
-//        smsIntent.setType("vnd.android-dir/mms-sms");
-//        smsIntent.putExtra("address" , new String (number));
-//        smsIntent.putExtra("sms_body", Const.MENSAJE + Code);
-//        try{
-//            startActivity(smsIntent);
-//            Log.i(SEND_SMS, "Enviando SMS");
-//            finish();
-//        }catch (android.content.ActivityNotFoundException e){
-//            etHistory.append("\nNo es posible enviar el SMS");
-//        }
-//    }
 
-    private void sendSMS(String to, String code){
+    private void sendSMS(Mensaje msg){
+        String destino, contenido;
+
+        destino = msg.getDestino();
+        contenido = msg.getContenido();
+        if(msg.isValido() == false) {
+            etHistory.append("\nFormato del mensaje SMS inválido");
+            return;
+        }
+        if(msg.isNuevoUsuario())
+            contenido = Const.MENSAJE_NUEVO_USUARIO + " " + contenido;
+        etHistory.append("\n" + destino);
+        etHistory.append("\n" + contenido);
+
         try {
             SmsManager sms = SmsManager.getDefault();
-            sms.sendTextMessage(to, null, etMsg.getText() + ":" +code, sentPI, deliveredPI);
+            sms.sendTextMessage(destino, null, contenido, sentPI, deliveredPI);
             etHistory.append("\nIntentando enviar SMS");
         }catch(Exception e){
             e.printStackTrace();
@@ -360,23 +393,6 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
         }
     }
-    private boolean testCellMsg(String number, String message){
-        if(number.length() != Const.SIZE_CELL_NUMBER) return false;
-        if(number.isEmpty()) return false;
-        if(message.length() != Const.SIZE_CODE_NUMBER) return false;
-        if(message.isEmpty()) return false;
-        return true;
-    }
-
-    private boolean testXmppMsg(String message){
-        if(message.isEmpty()) return false;
-        // numero celular + codigo + separador
-        if(message.length() < Const.SIZE_CELL_NUMBER +
-                Const.SIZE_CODE_NUMBER + 1) return false;
-        if(message.contains(Const.SEPARADOR) == false)return false;
-        return true;
-    }
-
 //    private boolean haveInternet(){
 //        ConnectivityManager cm =
 //                (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);

@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import xyz.feliche.androidbam.Const;
-import xyz.feliche.androidbam.MainActivity;
 
 /**
  * Created by feliche on 21/06/16.
@@ -51,9 +50,9 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
 
     // envía el estado de la conexión
     private void connectionStatus(ConnectionState status){
-        Intent intent = new Intent(XmppService.UPDATE_CONNECTION);
+        Intent intent = new Intent(XmppServiceBam.UPDATE_CONNECTION);
         intent.setPackage(mApplicationContext.getPackageName());
-        intent.putExtra(XmppService.CONNECTION, status.toString());
+        intent.putExtra(XmppServiceBam.CONNECTION, status.toString());
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN){
             intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         }
@@ -70,10 +69,10 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         if (message.getType().equals(Message.Type.chat)
                 || message.getType().equals(Message.Type.normal)) {
             if (message.getBody() != null) {
-                Intent intent = new Intent(XmppService.NEW_MESSAGE);
+                Intent intent = new Intent(XmppServiceBam.NEW_MESSAGE);
                 intent.setPackage(mApplicationContext.getPackageName());
-                intent.putExtra(XmppService.BUNDLE_MESSAGE_BODY, message.getBody());
-                intent.putExtra(XmppService.BUNDLE_FROM_XMPP, message.getFrom());
+                intent.putExtra(XmppServiceBam.BUNDLE_MESSAGE_BODY, message.getBody());
+                intent.putExtra(XmppServiceBam.BUNDLE_FROM_XMPP, message.getFrom());
                 mApplicationContext.sendBroadcast(intent);
             }
         }
@@ -98,49 +97,49 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
     //ConnectionListener
     @Override
     public void connected(XMPPConnection connection) {
-        XmppService.sConnectionState = ConnectionState.CONNECTED;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.CONNECTED;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
 
     @Override
     public void authenticated(XMPPConnection connection, boolean resumed) {
-        XmppService.sConnectionState = ConnectionState.AUTHENTICATE;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.AUTHENTICATE;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
 
     @Override
     public void connectionClosed() {
-        XmppService.sConnectionState = ConnectionState.DISCONNECTED;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.DISCONNECTED;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
     @Override
     public void connectionClosedOnError(Exception e) {
-        XmppService.sConnectionState = ConnectionState.CLOSED_ERROR;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.CLOSED_ERROR;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
     @Override
     public void reconnectingIn(int seconds) {
-        XmppService.sConnectionState = ConnectionState.RECONNECTING;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.RECONNECTING;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
     @Override
     public void reconnectionSuccessful() {
-        XmppService.sConnectionState = ConnectionState.RECONNECTED;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.RECONNECTED;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
     @Override
     public void reconnectionFailed(Exception e) {
-        XmppService.sConnectionState = ConnectionState.RECONNECTED_ERROR;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.RECONNECTED_ERROR;
+        connectionStatus(XmppServiceBam.sConnectionState);
     }
 
     @Override
     public void pingFailed() {
         Log.i("XMPPConnection: ", "Fallo el ping");
-        XmppService.sConnectionState = ConnectionState.PING_ERROR;
-        connectionStatus(XmppService.sConnectionState);
+        XmppServiceBam.sConnectionState = ConnectionState.PING_ERROR;
+        connectionStatus(XmppServiceBam.sConnectionState);
 
-        Intent intent = new Intent(mApplicationContext, XmppService.class);
+        Intent intent = new Intent(mApplicationContext, XmppServiceBam.class);
         mApplicationContext.stopService(intent);
         mApplicationContext.startService(intent);
     }
@@ -171,14 +170,14 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                if(action.equals(XmppService.SEND_MESSAGE)){
-                    sendMessage(intent.getStringExtra(XmppService.BUNDLE_MESSAGE_BODY),
-                            intent.getStringExtra(XmppService.BUNDLE_TO));
+                if(action.equals(XmppServiceBam.SEND_MESSAGE)){
+                    sendMessage(intent.getStringExtra(XmppServiceBam.BUNDLE_MESSAGE_BODY),
+                            intent.getStringExtra(XmppServiceBam.BUNDLE_TO));
                 }
             }
         };
         IntentFilter filter = new IntentFilter();
-        filter.addAction(XmppService.SEND_MESSAGE);
+        filter.addAction(XmppServiceBam.SEND_MESSAGE);
         mApplicationContext.registerReceiver(mReceiver, filter);
     }
 
@@ -215,8 +214,6 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
         // crea la conexión
         mConnection = new XMPPTCPConnection(builder.build());
 
-        // set reconnection policy
-        // set reconnection default policy
         ReconnectionManager connMgr = ReconnectionManager.getInstanceFor(mConnection);
         connMgr.enableAutomaticReconnection();
         connMgr.setEnabledPerDefault(true);
@@ -230,7 +227,7 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
 
         // Envía un Ping cada 60 segundos
         PingManager pingManager = PingManager.getInstanceFor(mConnection);
-        pingManager.setDefaultPingInterval(300);
+        pingManager.setDefaultPingInterval(600);
         pingManager.registerPingFailedListener(this);
 
         ServerPingWithAlarmManager.getInstanceFor(mConnection);
@@ -280,9 +277,9 @@ public class XmppConnection implements ConnectionListener, ChatManagerListener, 
             }
             listRoster.add(entry.getUser() + ": " + status);
         }
-        Intent intent = new Intent(XmppService.BUNDLE_ROSTER);
+        Intent intent = new Intent(XmppServiceBam.BUNDLE_ROSTER);
         intent.setPackage(mApplicationContext.getPackageName());
-        intent.putExtra(XmppService.LIST_ROSTER, listRoster);
+        intent.putExtra(XmppServiceBam.LIST_ROSTER, listRoster);
         mApplicationContext.sendBroadcast(intent);
     }
 

@@ -14,14 +14,14 @@ import org.jivesoftware.smackx.ping.android.ServerPingWithAlarmManager;
 
 import java.io.IOException;
 
-public class XmppService extends Service {
+public class XmppServiceBam extends Service {
 
-    public static final String NEW_MESSAGE = "xyz.feliche.newmessage";
-    public static final String SEND_MESSAGE = "xyz.feliche.sendmessage";
-    public static final String UPDATE_CONNECTION = "xyz.feliche.statusconnection";
-    public static final String LIST_ROSTER = "xyz.feliche.listroster";
-    public static final String PRESENCE_ROSTER = "xyz.feliche.presenceroster";
-    public static final String BUNDLE_ROSTER = "xyz.feliche.bundleroster";
+    public static final String NEW_MESSAGE = "xyz.feliche.androidbam.newmessage";
+    public static final String SEND_MESSAGE = "xyz.feliche.androidbam.sendmessage";
+    public static final String UPDATE_CONNECTION = "xyz.feliche.androidbam.statusconnection";
+    public static final String LIST_ROSTER = "xyz.feliche.androidbam.listroster";
+    public static final String PRESENCE_ROSTER = "xyz.feliche.androidbam.presenceroster";
+    public static final String BUNDLE_ROSTER = "xyz.feliche.androidbam.bundleroster";
     public static final String CHANGE_CONNECTIVITY = "android.net.conn.CONNECTIVITY_CHANGE";
 
     public static final String BUNDLE_FROM_XMPP = "b_from";
@@ -29,7 +29,7 @@ public class XmppService extends Service {
     public static final String BUNDLE_TO = "b_to";
     public static final String CONNECTION = "connection";
 
-    private static final String LOGTAG = "XmppService:";
+    private static final String LOGTAG = "XmppServiceBam:";
 
     private boolean mActive;
     private Thread mThread;
@@ -89,6 +89,7 @@ public class XmppService extends Service {
         }
         try {
             mConnection.connect();
+            return;
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(LOGTAG, "IO_ERROR");
@@ -102,9 +103,10 @@ public class XmppService extends Service {
             Log.e(LOGTAG, "HOSTNAME_ERROR");
             mConnection.onConnectionError(XmppConnection.ConnectionState.HOSTNAME_ERROR);
         }
+        mConnection = null;
     }
 
-    public XmppService(){
+    public XmppServiceBam(){
     }
 
     @Override
